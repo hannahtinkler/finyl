@@ -28,7 +28,7 @@ class ArtistsController extends Controller
 
         $releases = $this->discogs->search([
             'type' => 'release',
-            'artist' => $artist->name,
+            'query' => $artist->name,
             'format' => 'vinyl,Limited Edition',
         ]);
 
