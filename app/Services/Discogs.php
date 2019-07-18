@@ -27,11 +27,6 @@ class Discogs
         return $this->request('database/search', $args);
     }
 
-    public function releasesByArtist(int $artistId)
-    {
-        return $this->request(sprintf('/artists/%s/releases', $artistId));
-    }
-
     private function request(string $endpoint, array $args = [])
     {
         $key = serialize([
