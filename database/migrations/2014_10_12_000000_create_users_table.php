@@ -15,7 +15,7 @@ class CreateUsersTable extends Migration
     {
         Schema::create('users', function (Blueprint $table) {
             $table->increments('id');
-            $table->unsignedInteger('spotify_id');
+            $table->string('spotify_id');
             $table->string('name');
             $table->string('email')->nullable();
             $table->string('spotify_access_token');
