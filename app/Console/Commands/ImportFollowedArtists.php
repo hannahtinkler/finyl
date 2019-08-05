@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\User;
+use App\Models\UserArtist;
 use App\Services\Spotify;
 use Illuminate\Console\Command;
 
@@ -28,7 +29,7 @@ class ImportFollowedArtists extends Command
      *
      * @return void
      */
-    public function __construct(Spotify $spotify, User $user)
+    public function __construct(Spotify $spotify, User $user, UserArtist $artist)
     {
         parent::__construct();
 
@@ -48,7 +49,9 @@ class ImportFollowedArtists extends Command
         $this->progress = $this->output->createProgressBar($users->count());
         $this->progress->start();
 
-        $users->each([$this, 'importArtistsForUser']);
+        $users->each(function ($user) {
+            $this->importArtistsForUser($user);
+        });
 
         $this->progress->finish();
     }

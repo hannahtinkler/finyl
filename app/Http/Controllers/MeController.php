@@ -9,7 +9,7 @@ class MeController extends Controller
     public function index(Request $request)
     {
         return view('me.index', [
-            'artists' => $request->user()->artists,
+            'artists' => \App\Models\UserArtist::all(),//$request->user()->artists,
         ]);
     }
 }

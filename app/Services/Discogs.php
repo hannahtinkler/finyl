@@ -24,27 +24,52 @@ class Discogs
 
     public function search(array $args = [])
     {
-        return $this->request('database/search', $args);
+        return $this->get('database/search', $args);
     }
 
-    private function request(string $endpoint, array $args = [])
+    /**
+     * Get the default response for the endpoint (e.g. if pagincated, the first
+     * page)
+     *
+     * @param  string $endpoint
+     * @param  array  $args
+     * @return array
+     */
+    private function get(string $endpoint, array $args = [])
     {
         $key = serialize([
             'endpoint' => $endpoint,
             'args' => $args,
         ]);
 
-        if (!$result = cache()->get($key)) {
-            $result = json_decode(
-                $this->client->get($this->buildUrl($endpoint, $args))->getBody()
-                ,
+        $result = cache()->remember($key, 3600, function () use ($endpoint, $args) {
+            return json_decode(
+                $this->client->get($this->buildUrl($endpoint, $args))->getBody(),
                 true
             );
+        });
 
-            cache()->put($key, $result, 3600);
+        return collect($result);
+    }
+
+    /**
+     * Gets all records from an endpoint (e.g. if paginated, all pages)
+     *
+     * @return Collection
+     */
+    public function all(Callable $request)
+    {
+        $page = 1;
+        $allResults = collect([]);
+        $maxPages = 999;
+
+        while ($page <= $maxPages && $results = $request($page)) {
+            $maxPages = $results['pagination']['pages'];
+            $allResults = $allResults->merge($results['results'] ?? $results);
+            $page++;
         }
 
-        return $result;
+        return $allResults;
     }
 
     private function buildUrl(string $endpoint, array $args = [])

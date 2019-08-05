@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use Artisan;
 use App\Models\User;
+use App\Services\Spotify;
 use Illuminate\Http\Request;
 use SpotifyWebAPI\SpotifyWebAPI;
+use SpotifyWebAPI\SpotifyWebAPIException;
 use SpotifyWebAPI\Session as SpotifySession;
 
 class AuthenticationController extends Controller
@@ -24,12 +26,19 @@ class AuthenticationController extends Controller
         ],
     ];
 
-    public function __construct(SpotifySession $session, SpotifyWebAPI $api)
-    {
+    public function __construct(
+        SpotifySession $session,
+        SpotifyWebAPI $api,
+        Spotify $spotify
+    ) {
         $this->session = $session;
         $this->api = $api;
+        $this->spotify = $spotify;
     }
 
+    /**
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function index()
     {
         return redirect($this->session->getAuthorizeUrl($this->options));
@@ -42,7 +51,16 @@ class AuthenticationController extends Controller
      */
     public function store(Request $request)
     {
-        $this->session->requestAccessToken($request->get('code'));
+        try {
+            $this->session->requestAccessToken($request->get('code'));
+        } catch (SpotifyWebAPIException $exception) {
+            if ($exception->getCode() === 401) {
+                $this->spotify->refreshToken();
+                return $this->store($request);
+            }
+
+            throw $exception;
+        }
 
         $accessToken = $this->session->getAccessToken();
 

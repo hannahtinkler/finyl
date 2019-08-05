@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Services\Discogs;
 use App\Models\UserArtist;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 
 class ArtistsController extends Controller
 {
@@ -31,42 +32,35 @@ class ArtistsController extends Controller
         $allReleases = [];
         $artist = $this->artist->whereSpotifyId($spotifyId)->firstOrFail();
 
-        while ($this->page <= $this->maxPages && $releases = $this->getResults($artist)) {
-            $this->maxPages = $releases['pagination']['pages'];
-
-            $newReleases = collect($releases['results'])
-                ->filter(function ($release) use ($artist) {
-                    $artistName1 = preg_replace('/[^A-Za-z\s]+/', '', explode(' - ', $release['title'])[0]);
-                    $artistName2 = preg_replace('/[^A-Za-z\s]+/', '', $artist->name);
-
-                    return trim($artistName1) === trim($artistName2);
-                })
-                ->sort(function ($a, $b) {
-                    return explode(' - ', $b['title'])[1] <=> explode(' - ', $a['title'])[1];
-                })
-                ->sort(function ($a, $b) {
-                    return explode(' - ', $b['title'])[0] <=> explode(' - ', $a['title'])[0];
-                });
-
-            $allReleases = array_merge($allReleases, $newReleases->toArray());
-
-            $this->page++;
-        }
+        $releases = $this->discogs->all(function ($page) use ($artist) {
+            return $this->discogs->search([
+                'type' => 'release',
+                'query' => $artist->name,
+                'page' => $page,
+                'format' => 'vinyl,Limited Edition',
+                'per_page' => 100,
+            ]);
+        });
 
         return view('artists.index', [
             'artist' => $artist,
-            'releases' => $allReleases,
+            'releases' => $this->matchToArtist($artist, $releases),
         ]);
     }
 
-    private function getResults(UserArtist $artist)
+    private function matchToArtist($artist, Collection $results)
     {
-        return $this->discogs->search([
-            'type' => 'release',
-            'query' => $artist->name,
-            'page' => $this->page,
-            'format' => 'vinyl,Limited Edition',
-            'per_page' => 100,
-        ]);
+        return $results->filter(function ($release) use ($artist) {
+                $artistName1 = preg_replace('/[^A-Za-z\s]+/', '', explode(' - ', $release['title'])[0]);
+                $artistName2 = preg_replace('/[^A-Za-z\s]+/', '', $artist->name);
+
+                return trim($artistName1) === trim($artistName2);
+            })
+            ->sort(function ($a, $b) {
+                return explode(' - ', $b['title'])[1] <=> explode(' - ', $a['title'])[1];
+            })
+            ->sort(function ($a, $b) {
+                return explode(' - ', $b['title'])[0] <=> explode(' - ', $a['title'])[0];
+            });
     }
 }

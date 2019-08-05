@@ -42,8 +42,12 @@ class Spotify
 
             return $this->api->$method(...$args);
         } catch (SpotifyWebAPIException $exception) {
-            // @todo check for code
-            // $this->refreshToken();
+            if ($exception->getCode() === 401) {
+                $this->refreshToken();
+                return $this->api->$method(...$args);
+            }
+
+            throw $exception;
         }
     }
 
@@ -67,6 +71,12 @@ class Spotify
         $this->session->refreshAccessToken(
             $this->getUser()->spotify_refresh_token
         );
+
+        $this->getUser()->update([
+            'spotify_access_token' => $this->session->getAccessToken(),
+        ]);
+
+        $this->setUser = $this->getUser()->refresh();
     }
 
     /**
